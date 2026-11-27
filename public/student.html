@@ -8,25 +8,22 @@
 </head>
 <body class="bg-slate-50 min-h-screen font-sans">
   <div class="max-w-lg mx-auto p-4 sm:p-6">
-    <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <div>
         <h1 class="text-2xl font-bold text-slate-800">เช็คชื่อเข้าเรียนออนไลน์</h1>
         <p class="text-sm text-slate-500">ระบบล็อควันที่ปัจจุบันอัตโนมัติ พร้อมบันทึกภาพและพิกัด</p>
       </div>
-      <a href="/" class="text-sm bg-white border border-slate-200 px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100">กลับหน้าหลัก</a>
+      <a href="/" class="text-sm bg-white border border-slate-200 px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100">หน้าหลัก</a>
     </div>
 
-    <!-- ฟอร์มเช็คชื่อ -->
     <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-      
-      <!-- ช่องวันที่แบบล็อค (แก้ไขไม่ได้) -->
-      <div class="bg-indigo-50 border border-indigo-200 p-3.5 rounded-xl flex items-center justify-between">
+      <!-- วันที่แบบล็อคตามวันเวลาไทยปัจจุบัน -->
+      <div class="bg-indigo-50 border border-indigo-200 p-3.5 rounded-xl flex items-center justify-between gap-2">
         <div>
           <span class="text-xs font-medium text-indigo-600 block">📅 วันที่เช็คชื่อ (ล็อคตามวันปัจจุบัน)</span>
-          <span id="displayDate" class="text-base font-bold text-indigo-950">กำลังโหลดวันที่...</span>
+          <span id="displayDate" class="text-sm sm:text-base font-bold text-indigo-950">กำลังโหลดวันที่...</span>
         </div>
-        <span class="text-xs bg-indigo-600 text-white px-2.5 py-1 rounded-full font-medium">🔒 ล็อควันแล้ว</span>
+        <span class="shrink-0 text-xs bg-indigo-600 text-white px-2.5 py-1 rounded-full font-medium">🔒 ล็อควัน</span>
       </div>
 
       <div>
@@ -47,13 +44,12 @@
           class="w-full px-3 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" />
       </div>
 
-      <!-- ส่วนกล้องถ่ายรูป -->
       <div>
         <label class="block text-sm font-medium text-slate-700 mb-1">📸 ถ่ายภาพยืนยันตัวตน *</label>
         <div class="relative bg-slate-900 rounded-xl overflow-hidden aspect-video flex items-center justify-center">
           <video id="video" autoplay playsinline class="w-full h-full object-cover"></video>
           <canvas id="canvas" class="hidden"></canvas>
-          <img id="photoPreview" class="hidden w-full h-full object-cover" />
+          <img id="photoPreview" alt="ภาพตัวอย่าง" class="hidden w-full h-full object-cover" />
         </div>
         <div class="flex gap-2 mt-2">
           <button type="button" id="captureBtn" onclick="takePhoto()"
@@ -67,18 +63,16 @@
         </div>
       </div>
 
-      <!-- ส่วนพิกัด GPS -->
-      <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm flex items-center justify-between">
+      <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl text-sm flex items-center justify-between gap-2">
         <div>
           <span class="font-medium text-slate-700 block">📍 พิกัดตำแหน่ง (GPS)</span>
           <span id="gpsStatus" class="text-xs text-slate-500">กำลังค้นหาตำแหน่งปัจจุบัน...</span>
         </div>
-        <button type="button" onclick="getLocation()" class="text-xs text-indigo-600 hover:underline font-medium">
+        <button type="button" onclick="getLocation()" class="text-xs text-indigo-600 hover:underline font-medium shrink-0">
           อัปเดตพิกัด
         </button>
       </div>
 
-      <!-- ปุ่มกดส่งข้อมูล -->
       <button type="button" id="submitBtn" onclick="submitCheckin()"
         class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-sm transition">
         ✅ ยืนยันการเช็คชื่อเข้าเรียน
@@ -91,7 +85,6 @@
     let latitude = null;
     let longitude = null;
 
-    // 1. ล็อควันที่และเวลาปัจจุบันตามเวลาไทย (ไม่สามารถแก้ไขได้)
     function updateLockedDate() {
       const now = new Date();
       const dateText = now.toLocaleDateString('th-TH', {
@@ -109,4 +102,117 @@
       });
       document.getElementById('displayDate').textContent = `${dateText} (${timeText} น.)`;
     }
-    update
+    updateLockedDate();
+    setInterval(updateLockedDate, 1000);
+
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user' },
+          audio: false
+        });
+        document.getElementById('video').srcObject = stream;
+      } catch (err) {
+        alert('ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตการเข้าถึงกล้องในเบราว์เซอร์');
+      }
+    }
+
+    function takePhoto() {
+      const video = document.getElementById('video');
+      const canvas = document.getElementById('canvas');
+      const preview = document.getElementById('photoPreview');
+
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      photoData = canvas.toDataURL('image/jpeg', 0.7);
+      preview.src = photoData;
+
+      video.classList.add('hidden');
+      preview.classList.remove('hidden');
+      document.getElementById('captureBtn').classList.add('hidden');
+      document.getElementById('retakeBtn').classList.remove('hidden');
+    }
+
+    function retakePhoto() {
+      photoData = '';
+      document.getElementById('video').classList.remove('hidden');
+      document.getElementById('photoPreview').classList.add('hidden');
+      document.getElementById('captureBtn').classList.remove('hidden');
+      document.getElementById('retakeBtn').classList.add('hidden');
+    }
+
+    function getLocation() {
+      const statusEl = document.getElementById('gpsStatus');
+      if (!navigator.geolocation) {
+        statusEl.textContent = 'อุปกรณ์ไม่รองรับ GPS';
+        return;
+      }
+      statusEl.textContent = 'กำลังดึงพิกัด GPS...';
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          latitude = pos.coords.latitude;
+          longitude = pos.coords.longitude;
+          statusEl.textContent = `ระบุตำแหน่งสำเร็จ (${latitude.toFixed(5)}, ${longitude.toFixed(5)})`;
+          statusEl.className = 'text-xs text-emerald-600 font-medium';
+        },
+        () => {
+          statusEl.textContent = 'ไม่สามารถดึงพิกัดได้ (กรุณาเปิด Location)';
+          statusEl.className = 'text-xs text-amber-600';
+        },
+        { enableHighAccuracy: true }
+      );
+    }
+
+    async function submitCheckin() {
+      const studentId = document.getElementById('studentId').value.trim();
+      const fullName = document.getElementById('fullName').value.trim();
+      const className = document.getElementById('className').value.trim();
+      const btn = document.getElementById('submitBtn');
+
+      if (!studentId || !fullName) {
+        return alert('กรุณากรอกรหัสนักศึกษาและชื่อ-นามสกุล');
+      }
+      if (!photoData) {
+        return alert('กรุณาถ่ายภาพยืนยันตัวตนก่อนกดเช็คชื่อ');
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'กำลังบันทึกข้อมูล...';
+
+      try {
+        const res = await fetch('/api/checkin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            studentId,
+            fullName,
+            className,
+            photo: photoData,
+            latitude,
+            longitude
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(`✅ เช็คชื่อสำเร็จ!\nวันที่: ${data.record.date}\nเวลา: ${data.record.time}`);
+          window.location.href = '/';
+        } else {
+          alert(data.message || 'เกิดข้อผิดพลาดในการเช็คชื่อ');
+        }
+      } catch (err) {
+        alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '✅ ยืนยันการเช็คชื่อเข้าเรียน';
+      }
+    }
+
+    startCamera();
+    getLocation();
+  </script>
+</body>
+</html>
