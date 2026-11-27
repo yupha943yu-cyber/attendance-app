@@ -1,72 +1,113 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ตรวจสอบประวัติการเช็คชื่อ - ผู้ปกครอง</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <style> body { font-family: 'Sarabun', sans-serif; } </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ผู้ปกครองตรวจสอบการเข้าเรียน - WorkCheck</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-50 min-h-screen py-10 px-4">
-    <div class="max-w-2xl mx-auto">
-        <div class="flex justify-between items-center mb-6">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-800">ระบบตรวจสอบสำหรับผู้ปกครอง</h1>
-                <p class="text-gray-500 text-sm">ค้นหาประวัติการเข้าเรียนของนักศึกษา</p>
-            </div>
-            <a href="index.html" class="text-sm text-blue-600 hover:underline">← กลับหน้าหลัก</a>
-        </div>
-
-        <div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 mb-6">
-            <div class="flex gap-2">
-                <input type="text" id="searchId" placeholder="กรอกรหัสนักศึกษา (เช่น 6539010001)" class="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-sm">
-                <button onclick="searchStudent()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-2 rounded-xl text-sm transition shadow-md">ค้นหา</button>
-            </div>
-        </div>
-
-        <div id="resultContainer" class="space-y-4">
-            <div class="bg-white rounded-2xl shadow-xl p-6 text-center text-gray-400 border border-gray-100">
-                กรุณากรอกรหัสนักศึกษาเพื่อตรวจสอบข้อมูล
-            </div>
-        </div>
+<body class="bg-slate-50 min-h-screen font-sans">
+  <div class="max-w-2xl mx-auto p-4 sm:p-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-slate-800">ระบบตรวจสอบสำหรับผู้ปกครอง</h1>
+        <p class="text-sm text-slate-500">ตรวจสอบประวัติการเข้าเรียนย้อนหลังและปฏิทินการมาเรียน</p>
+      </div>
+      <a href="/" class="text-sm bg-white border border-slate-200 px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100">กลับหน้าหลัก</a>
     </div>
 
-    <script>
-        async function searchStudent() {
-            const query = document.getElementById('searchId').value.trim();
-            const container = document.getElementById('resultContainer');
+    <!-- ช่องค้นหาและปฏิทิน -->
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-6 space-y-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">รหัสนักศึกษา *</label>
+          <input type="text" id="studentId" placeholder="กรอกรหัสนักศึกษา"
+            class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">เลือกวันที่ในปฏิทิน (ไม่บังคับ)</label>
+          <input type="date" id="filterDate"
+            class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+        </div>
+      </div>
 
-            if (!query) {
-                alert('กรุณากรอกรหัสนักศึกษาก่อนค้นหา');
-                return;
-            }
+      <div class="flex flex-wrap gap-2">
+        <button onclick="searchHistory()"
+          class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 px-4 rounded-xl transition">
+          ค้นหาข้อมูล
+        </button>
+        <button onclick="clearDateAndSearch()"
+          class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2.5 px-4 rounded-xl transition">
+          ดูประวัติทั้งหมด
+        </button>
+      </div>
+    </div>
 
-            try {
-                const res = await fetch('/api/attendance');
-                const records = await res.json();
-                const filtered = records.filter(r => r.studentId.includes(query));
+    <!-- สรุปผล -->
+    <div id="summaryBox" class="hidden bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl mb-4 text-sm font-medium"></div>
 
-                if (filtered.length === 0) {
-                    container.innerHTML = `<div class="bg-white rounded-2xl shadow-xl p-6 text-center text-red-500 border border-gray-100">ไม่พบประวัติการเช็คชื่อของรหัสดังกล่าว</div>`;
-                    return;
-                }
+    <!-- แสดงรายการย้อนหลัง -->
+    <div id="resultList" class="space-y-4"></div>
+  </div>
 
-                container.innerHTML = filtered.map(r => `
-                    <div class="bg-white rounded-2xl shadow-xl p-6 border border-gray-100 flex items-center gap-4">
-                        <img src="${r.photo}" class="w-20 h-20 object-cover rounded-xl shadow-sm border">
-                        <div class="flex-1">
-                            <h3 class="font-bold text-lg text-gray-800">${r.studentName}</h3>
-                            <p class="text-sm text-gray-600">รหัสนักศึกษา: <span class="font-semibold">${r.studentId}</span></p>
-                            <p class="text-xs text-gray-500 mt-1">📍 พิกัด: ${r.latitude}, ${r.longitude}</p>
-                            <p class="text-xs text-emerald-600 font-semibold mt-1">✔ เวลาเช็คชื่อ: ${r.timestamp}</p>
-                        </div>
-                    </div>
-                `).join('');
-            } catch (err) {
-                console.error(err);
-            }
-        }
-    </script>
+  <script>
+    function clearDateAndSearch() {
+      document.getElementById('filterDate').value = '';
+      searchHistory();
+    }
+
+    async function searchHistory() {
+      const studentId = document.getElementById('studentId').value.trim();
+      const date = document.getElementById('filterDate').value;
+      const resultList = document.getElementById('resultList');
+      const summaryBox = document.getElementById('summaryBox');
+
+      if (!studentId) {
+        alert('กรุณากรอกรหัสนักศึกษาก่อนค้นหา');
+        return;
+      }
+
+      resultList.innerHTML = '<p class="text-center text-slate-500 py-6">กำลังค้นหาข้อมูล...</p>';
+      summaryBox.classList.add('hidden');
+
+      let url = `/api/parent/history?studentId=${encodeURIComponent(studentId)}`;
+      if (date) url += `&date=${encodeURIComponent(date)}`;
+
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (!data.success || data.records.length === 0) {
+        resultList.innerHTML = `
+          <div class="bg-white p-8 rounded-2xl border border-slate-200 text-center text-slate-500">
+            ไม่พบประวัติการเช็คชื่อ${date ? ' ในวันที่เลือก' : ''}
+          </div>`;
+        return;
+      }
+
+      summaryBox.textContent = `พบประวัติการเช็คชื่อทั้งหมด ${data.records.length} รายการ${date ? ` (วันที่ ${date})` : ''}`;
+      summaryBox.classList.remove('hidden');
+
+      resultList.innerHTML = data.records.map(item => `
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col sm:flex-row gap-4">
+          <img src="${item.photo}" alt="รูปยืนยัน" class="w-full sm:w-32 h-32 object-cover rounded-xl border border-slate-100" />
+          <div class="flex-1 space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-800">${item.fullName}</span>
+              <span class="text-xs bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-full font-medium">${item.status}</span>
+            </div>
+            <p class="text-sm text-slate-600">รหัส: ${item.studentId} ${item.className ? `| ห้อง: ${item.className}` : ''}</p>
+            <p class="text-sm text-slate-600">📅 วันที่: <span class="font-medium">${item.date}</span> เวลา <span class="font-medium">${item.time}</span></p>
+            ${item.latitude && item.longitude ? `
+              <a href="https://www.google.com/maps?q=${item.latitude},${item.longitude}" target="_blank"
+                class="inline-block text-xs text-blue-600 hover:underline mt-1">
+                📍 ดูตำแหน่งพิกัด GPS บนแผนที่
+              </a>
+            ` : '<p class="text-xs text-slate-400">ไม่มีข้อมูลพิกัด GPS</p>'}
+          </div>
+        </div>
+      `).join('');
+    }
+  </script>
 </body>
 </html>
